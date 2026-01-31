@@ -1,0 +1,296 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Product - 360 Viewer</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+        #viewer { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; transition: background 0.3s; }
+        #viewer:active { cursor: grabbing; }
+        #product-image { max-width: 100%; max-height: 100%; user-select: none; -webkit-user-drag: none; transition: transform 0.1s ease-out; } 
+        .loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: sans-serif; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="viewer">
+        <div class="loading">Loading 360 View...</div>
+        <img id="product-image" draggable="false" style="display:none">
+    </div>
+
+    <script>
+        class TurntableController {
+    constructor(container, imgElement, rows, options = {}) {
+        this.container = container;
+        this.imgElement = imgElement;
+        this.rows = rows;
+        
+        // Configuration
+        this.options = {
+            sensitivityX: 25, // Pixels to drag for one frame
+            sensitivityY: 50, // Pixels to drag for one row change
+            minZoom: 1,
+            maxZoom: 3,
+            zoomSpeed: 0.1,
+            onUpdate: null,   // Callback: ({rowId, rowIndex, frameIndex}) => void
+            ...options
+        };
+
+        // Internal State
+        this.state = {
+            currentRowIdx: 0,
+            currentFrameIdx: 0,
+            isDragging: false,
+            startX: 0,
+            startY: 0,
+            zoom: 1
+        };
+
+        // Event Bindings
+        this.binds = {
+            start: this.onDragStart.bind(this),
+            move: this.onDragMove.bind(this),
+            end: this.onDragEnd.bind(this),
+            wheel: this.onWheel.bind(this)
+        };
+
+        this.init();
+    }
+
+    init() {
+        // Mouse
+        this.container.addEventListener('mousedown', this.binds.start);
+        window.addEventListener('mousemove', this.binds.move);
+        window.addEventListener('mouseup', this.binds.end);
+        this.container.addEventListener('wheel', this.binds.wheel, { passive: false });
+
+        // Touch
+        this.container.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            this.binds.start(e.touches[0]); 
+        }, { passive: false });
+        
+        window.addEventListener('touchmove', (e) => { 
+            if(this.state.isDragging) e.preventDefault(); 
+            this.binds.move(e.touches[0]); 
+        }, { passive: false });
+        
+        window.addEventListener('touchend', this.binds.end);
+
+        // Initial Render
+        this.updateImage();
+        this.applyTransform();
+    }
+
+    /**
+     * Updates the data source (used by Editor when state changes).
+     */
+    updateRows(newRows) {
+        this.rows = newRows;
+        this.validateState();
+        this.updateImage();
+    }
+
+    /**
+     * Ensures indices are within valid bounds.
+     */
+    validateState() {
+        if (!this.rows || this.rows.length === 0) return;
+
+        if (this.state.currentRowIdx >= this.rows.length) {
+            this.state.currentRowIdx = 0;
+            this.resetZoom();
+        }
+        
+        const row = this.rows[this.state.currentRowIdx];
+        if (row && this.state.currentFrameIdx >= row.images.length) {
+            this.state.currentFrameIdx = 0;
+        }
+    }
+
+    resetZoom() {
+        this.state.zoom = 1;
+        this.applyTransform();
+    }
+
+    applyTransform() {
+        this.imgElement.style.transform = `scale(${this.state.zoom})`;
+        this.imgElement.style.transformOrigin = 'center center'; 
+    }
+
+    updateImage() {
+        if (!this.rows || this.rows.length === 0) return;
+        
+        const row = this.rows[this.state.currentRowIdx];
+        if (!row || row.images.length === 0) return;
+
+        // Safety check
+        if (this.state.currentFrameIdx >= row.images.length) {
+            this.state.currentFrameIdx = 0;
+        }
+
+        const src = row.images[this.state.currentFrameIdx];
+        if (src) this.imgElement.src = src;
+
+        if (this.options.onUpdate) {
+            this.options.onUpdate({
+                rowId: row.id, 
+                rowIndex: this.state.currentRowIdx,
+                frameIndex: this.state.currentFrameIdx
+            });
+        }
+    }
+
+    // --- Interactions ---
+
+    onWheel(e) {
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY) * -1; // Up is positive zoom
+        const newZoom = this.state.zoom + (delta * this.options.zoomSpeed);
+        this.state.zoom = Math.min(Math.max(newZoom, this.options.minZoom), this.options.maxZoom);
+        this.applyTransform();
+    }
+
+    onDragStart(e) {
+        if (!this.rows || this.rows.length === 0) return;
+        this.state.isDragging = true;
+        this.state.startX = e.clientX;
+        this.state.startY = e.clientY;
+        this.container.style.cursor = 'grabbing';
+    }
+
+    onDragMove(e) {
+        if (!this.state.isDragging) return;
+
+        const deltaX = e.clientX - this.state.startX;
+        const deltaY = e.clientY - this.state.startY;
+
+        // Horizontal: Rotation
+        if (Math.abs(deltaX) > this.options.sensitivityX) {
+            const row = this.rows[this.state.currentRowIdx];
+            const totalFrames = row.images.length;
+            
+            // Drag Left -> Rotate Right (Next Frame)
+            const step = -Math.floor(deltaX / this.options.sensitivityX);
+            
+            if (step !== 0) {
+                let next = (this.state.currentFrameIdx + step) % totalFrames;
+                if (next < 0) next += totalFrames;
+                
+                this.state.currentFrameIdx = next;
+                this.state.startX = e.clientX; // Reset anchor to prevent acceleration
+                this.updateImage();
+            }
+        }
+
+        // Vertical: Elevation
+        if (Math.abs(deltaY) > this.options.sensitivityY) {
+            let changed = false;
+            // Drag Down -> Previous Row (Lower Elevation index)
+            if (deltaY > 0 && this.state.currentRowIdx > 0) {
+                this.state.currentRowIdx--;
+                changed = true;
+            } 
+            // Drag Up -> Next Row (Higher Elevation index)
+            else if (deltaY < 0 && this.state.currentRowIdx < this.rows.length - 1) {
+                this.state.currentRowIdx++;
+                changed = true;
+            }
+
+            if (changed) {
+                this.state.startY = e.clientY;
+                this.resetZoom();
+                this.updateImage();
+            }
+        }
+    }
+
+    onDragEnd() {
+        this.state.isDragging = false;
+        this.container.style.cursor = 'grab';
+    }
+}
+
+        // --- Drag & Drop Config Support ---
+        function setupDragAndDrop(viewerEl, imgEl, loader) {
+            window.addEventListener('dragover', e => e.preventDefault());
+            window.addEventListener('drop', async e => {
+                e.preventDefault();
+                
+                const files = e.dataTransfer.files;
+                if (files.length === 0) return;
+
+                const file = files[0];
+                if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                    loader.style.display = 'block';
+                    loader.textContent = 'Loading config...';
+                    imgEl.style.display = 'none';
+                    
+                    try {
+                        const content = await readFileAsText(file);
+                        const config = JSON.parse(content);
+                        const obj = config.objects[0];
+
+                        if (obj.backgroundColor) viewerEl.style.backgroundColor = obj.backgroundColor;
+                        
+                        // Re-init controller
+                        new TurntableController(viewerEl, imgEl, obj.rows);
+
+                        loader.style.display = 'none';
+                        imgEl.style.display = 'block';
+                        document.title = (obj.name || "360 Viewer") + " - 360 Viewer";
+                    } catch (err) {
+                        loader.textContent = "Error loading config: " + err.message;
+                        console.error(err);
+                    }
+                }
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        (async function() {
+            const viewerEl = document.getElementById('viewer');
+            const imgEl = document.getElementById('product-image');
+            const loader = document.querySelector('.loading');
+            
+            setupDragAndDrop(viewerEl, imgEl, loader);
+
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const configUrl = urlParams.get('config') || 'config.json';
+                
+                // Try to load default, but if it fails (404), we just wait for drag & drop
+                const response = await fetch(configUrl);
+                if (!response.ok) {
+                    // Only throw if user specifically asked for a config that failed
+                    if (urlParams.has('config')) throw new Error("Failed to load config");
+                    // Otherwise, just stay in loading state or show "Drop Config Here"
+                    loader.textContent = "Drop config.json here";
+                    return;
+                }
+                const config = await response.json();
+                const obj = config.objects[0];
+
+                if (obj.backgroundColor) viewerEl.style.backgroundColor = obj.backgroundColor;
+
+                new TurntableController(viewerEl, imgEl, obj.rows);
+
+                loader.style.display = 'none';
+                imgEl.style.display = 'block';
+            } catch (e) {
+                loader.textContent = "Error: " + e.message;
+                console.error(e);
+            }
+        })();
+    </script>
+</body>
+</html>

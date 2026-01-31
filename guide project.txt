@@ -1,0 +1,189 @@
+COMPREHENSIVE PROMPT FOR 360° TURNTABLE VIEWER SYSTEM
+Project Overview
+Build a web-based 360° turntable image viewer system with two components:
+
+Editor Tool - Configure multi-row turntable sequences
+Viewer - Embeddable player for the configured sequences
+
+Core Requirements
+Editor Tool Features:
+
+Multi-row support: Each object can have multiple elevation rows (e.g., eye-level, 30° up, 60° up)
+Drag & drop interface: Upload images for each row
+Row management: Add/remove elevation rows via UI
+Images per row: Adjustable number of images per row (different rows can have different counts)
+Elevation adjustment: UI control to set the elevation angle name/label for each row
+Live preview: Real-time preview of the viewer as you configure it
+Export functionality: Generate viewer HTML + JSON config files
+
+Viewer Features:
+
+Horizontal drag: Click and drag left/right to rotate around the object (cycles through images in current row)
+Vertical drag: Click and drag up/down to switch between elevation rows
+Smooth transitions: Fluid image changes during interaction
+Maintain rotation angle: When switching elevation rows, maintain the current horizontal rotation position
+Preloading: Load all images on initialization for smooth playback
+Responsive: Work on desktop and touch devices
+
+Technical Specifications
+Data Format:
+json{
+  "objects": [
+    {
+      "id": "object_001",
+      "name": "Product Name",
+      "rows": [
+        {
+          "elevation": "0°",
+          "images": [
+            "data:image/jpeg;base64,...",
+            "data:image/jpeg;base64,...",
+            // ... more base64 encoded images
+          ]
+        },
+        {
+          "elevation": "30°",
+          "images": [...]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Image Storage:
+- Images embedded as base64 in JSON config
+- JSON file can be hosted separately from HTML viewer
+- HTML viewer loads JSON via URL parameter or embedded config
+
+#### Interaction Logic:
+- **Horizontal sensitivity**: ~50px drag = move to next/previous image in sequence
+- **Vertical sensitivity**: ~100px drag = switch to next/previous elevation row
+- **Mouse/touch support**: Single event handler for both input types
+- **Edge wrapping**: Horizontal rotation wraps (last image → first image)
+- **Vertical clamping**: Stop at top/bottom elevation rows
+
+### Implementation Guidelines
+
+#### Editor UI Structure:
+```
+┌─────────────────────────────────────────┐
+│  360° Turntable Editor                  │
+├─────────────────────────────────────────┤
+│  Object Name: [____________]            │
+│                                         │
+│  ┌─ Elevation Row 1: [0°____] [Remove]│
+│  │  Images: 36                         │
+│  │  [Drag & Drop Zone]                 │
+│  │  📷 📷 📷 ... (thumbnail strip)     │
+│  └─────────────────────────────────────│
+│                                         │
+│  [+ Add Elevation Row]                 │
+│                                         │
+│  ┌─ Preview ──────────────────────────┐│
+│  │                                     ││
+│  │     [Live Viewer Preview]           ││
+│  │                                     ││
+│  └─────────────────────────────────────┘│
+│                                         │
+│  [Export Viewer + Config]              │
+└─────────────────────────────────────────┘
+```
+
+#### Viewer UI Structure:
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│                                         │
+│          [360° Image Display]           │
+│                                         │
+│     ← Drag horizontally to rotate →    │
+│     ↑ Drag vertically for elevation ↓  │
+│                                         │
+│  Current: Row 2/3 | Frame 12/36        │
+└─────────────────────────────────────────┘
+Technology Stack Recommendations:
+
+Vanilla JavaScript (no frameworks needed for simplicity)
+HTML5 Canvas or direct <img> tag (canvas for potential future effects)
+CSS Grid/Flexbox for editor layout
+File API for drag & drop
+LocalStorage for temporary editor state (optional)
+
+Key Functions to Implement:
+Editor:
+javascript// Core functions needed
+- handleImageDrop(files, rowIndex)
+- convertImagesToBase64(files)
+- addElevationRow()
+- removeElevationRow(rowIndex)
+- updatePreview()
+- exportConfiguration()
+- generateViewerHTML(config)
+Viewer:
+javascript// Core functions needed
+- loadConfiguration(jsonUrl or embedded)
+- preloadImages(config)
+- handleDragStart(event)
+- handleDragMove(event)
+- handleDragEnd(event)
+- updateCurrentFrame(rowIndex, frameIndex)
+- calculateFrameFromDrag(deltaX, deltaY)
+Export Behavior:
+
+User clicks "Export"
+System generates two files:
+
+viewer.html - Standalone viewer with embedded viewer code
+config.json - Configuration with base64 images
+
+
+Viewer HTML includes: <script src="config.json"> or loads via URL param viewer.html?config=config.json
+
+Starting Simple (Phase 1):
+For initial version, focus on:
+
+Single object support
+2-3 elevation rows maximum
+Basic drag interaction (no momentum/inertia)
+Simple UI with clear labels
+Working export functionality
+
+Can enhance later with:
+
+Auto-rotation mode
+Zoom controls
+Multiple object management
+Keyboard controls
+Mobile optimization
+Loading indicators
+Image compression options
+
+Edge Cases to Handle:
+
+Images not loaded yet (show loading state)
+Different image dimensions (maintain aspect ratio)
+Very large base64 files (consider file size warnings)
+Empty rows (validation before export)
+Browser memory limits with many high-res images
+
+
+USAGE GUIDE
+For the Developer/AI:
+
+Build the editor first as a single HTML file
+Test drag & drop and preview functionality
+Implement export to generate viewer HTML + JSON
+Test the generated viewer independently
+Iterate on interaction sensitivity and smoothness
+
+For the End User:
+
+Open editor.html in browser
+Drag & drop images for first elevation row (e.g., 36 images taken at eye-level)
+Click "Add Elevation Row" and drag images for second elevation (e.g., 24 images taken from above)
+Adjust elevation labels as needed
+Preview interaction in the preview panel
+Click "Export" to download viewer.html and config.json
+Upload both files to your web server
+Embed viewer: <iframe src="viewer.html"></iframe>

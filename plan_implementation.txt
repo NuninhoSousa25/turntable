@@ -1,0 +1,46 @@
+# Turntable Viewer Feature Implementation Plan
+
+## Goal
+Align the Turntable Viewer capabilities with the 3D Viewer workflow, focusing on configurable user experience (sensitivity, zoom, auto-rotation) and state-based sharing.
+
+## Phase 1: Controller Upgrade (Core Logic)
+Update `TurntableController` in `script.js` and `viewer.html` to support:
+- **Dynamic Sensitivity**: Configurable X/Y drag sensitivity.
+- **Zoom Limits**: Configurable Min/Max zoom levels.
+- **Auto-Rotation**:
+    - Idle timer to detect inactivity.
+    - Automatic horizontal rotation when idle.
+    - Pause on user interaction.
+- **Initial State**: Support loading specific `row` and `frame` from options/config.
+
+## Phase 2: Editor UI Enhancements
+Add a new "Viewer Settings" section to the Editor sidebar (`editor/index.html`):
+- **Rotation Speed (X-Sensitivity)**: Slider (Low to High).
+- **Row Switch Speed (Y-Sensitivity)**: Slider (Low to High).
+- **Zoom Range**: Dual inputs or sliders for Min/Max zoom.
+- **Auto-Rotate**: Checkbox + Speed slider.
+- **Live Preview**: Ensure these settings update the preview immediately.
+
+## Phase 3: Configuration & Export
+- **Data Structure**: Update `config.json` schema to include a `settings` object:
+  ```json
+  {
+    "objects": [{
+      "name": "...",
+      "settings": {
+        "sensitivityX": 25,
+        "sensitivityY": 50,
+        "minZoom": 1,
+        "maxZoom": 3,
+        "autoRotate": true,
+        "autoRotateSpeed": 50
+      },
+      "rows": [...]
+    }]
+  }
+  ```
+- **Export Logic**: Ensure `exportConfiguration` captures the current editor state into this JSON structure.
+- **Viewer Generation**: Update `generateViewerHTML` to embed the upgraded `TurntableController` and apply these settings on load.
+
+## Phase 4: Share / Link Generator (Future)
+- Add a tool to generate "Deep Links" to specific frames if the config is hosted online.
