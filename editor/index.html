@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Turntable Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>360° Turntable Editor</h1>
+        
+        <div class="main-layout">
+            <div class="config-panel">
+                <div class="form-group" style="padding-bottom: 20px; border-bottom: 1px solid #eee; margin-bottom: 20px;">
+                    <label for="importUrl">Import Config from URL:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="importUrl" placeholder="http://example.com/config.json">
+                        <button id="import-url-btn" class="btn secondary" style="width: auto; padding: 10px 15px;">Load</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="objectName">Object Name:</label>
+                    <input type="text" id="objectName" value="My Product">
+                </div>
+
+                <!-- Viewer Settings Group -->
+                <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <label style="margin-bottom: 10px; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Viewer Settings</label>
+                    
+                    <!-- Background Color -->
+                    <div style="margin-bottom: 15px;">
+                        <label for="bgColor" style="font-size: 12px; font-weight: normal;">Background Color</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="bgColor" value="#eeeeee" style="width: 50px; padding: 2px; height: 35px;">
+                            <span id="bgColorValue" style="color: #666; font-family: monospace;">#eeeeee</span>
+                        </div>
+                    </div>
+
+                    <!-- Sensitivity -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="font-size: 12px; font-weight: normal;">Rotation Speed</label>
+                            <input type="range" id="sensX" min="1" max="100" value="25" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; font-weight: normal;">Vertical Speed</label>
+                            <input type="range" id="sensY" min="1" max="100" value="50" style="width: 100%;">
+                        </div>
+                    </div>
+
+                    <!-- Zoom -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-size: 12px; font-weight: normal;">Zoom Range (Min - Max)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="minZoom" value="1" step="0.1" min="0.1" style="width: 50%;">
+                            <input type="number" id="maxZoom" value="3" step="0.5" max="10" style="width: 50%;">
+                        </div>
+                    </div>
+
+                    <!-- Auto Rotate -->
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="font-size: 12px; font-weight: normal; margin:0;">
+                            <input type="checkbox" id="autoRotate" style="width: auto;"> Auto-Rotate
+                        </label>
+                        <input type="range" id="autoRotateSpeed" min="10" max="500" value="100" title="Speed" style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="background: #f0f8ff; padding: 10px; border-radius: 4px; border: 1px solid #cce5ff;">
+                    <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 0;">
+                        <input type="checkbox" id="applyMasks" style="width: auto; margin-right: 10px;">
+                        <span>Auto-apply Masks</span>
+                    </label>
+                    <small style="display: block; margin-top: 5px; color: #666;">
+                        Drag images AND masks together. <br>
+                        Matches <code>name.jpg</code> with <code>name_mask.png</code>.
+                    </small>
+                </div>
+
+                <div id="rows-container">
+                    <!-- Rows will be added here dynamically -->
+                </div>
+
+                <button id="add-row-btn" class="btn secondary">+ Add Elevation Row</button>
+            </div>
+
+            <div class="preview-panel">
+                <h2>Live Preview</h2>
+                <div id="preview-container" class="viewer-container">
+                    <div id="preview-loader">Add images to preview</div>
+                    <img id="preview-image" src="" alt="Preview" draggable="false">
+                </div>
+                <div class="controls" style="display: flex; gap: 10px;">
+                    <button id="export-json-btn" class="btn secondary" style="flex: 1;">Export Config (JSON)</button>
+                    <button id="export-html-btn" class="btn primary" style="flex: 1;">Export Viewer (HTML)</button>
+                </div>
+
+                <!-- Share Link Generator -->
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h3 style="margin-top: 0; font-size: 16px; color: #2c3e50;">Share Link Generator</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                        Upload your <code>.json</code> config to a server (e.g., GitHub, your website) and paste the URL below to create a shareable link.
+                    </p>
+                    <div class="form-group">
+                        <label for="hostedConfigUrl" style="font-size: 12px;">Hosted Config URL:</label>
+                        <input type="text" id="hostedConfigUrl" placeholder="https://example.com/my_product.json">
+                    </div>
+                    <div class="form-group">
+                         <label style="font-size: 12px;">Viewer URL (Optional Base):</label>
+                         <input type="text" id="viewerBaseUrl" placeholder="https://your-viewer-site.com/viewer.html" value="viewer.html">
+                    </div>
+                    <button id="generate-link-btn" class="btn" style="background: #28a745; color: white; width: 100%;">Generate & Copy Link</button>
+                    <div id="generated-link-container" style="display:none; margin-top: 10px;">
+                        <textarea id="generated-link-output" readonly style="width: 100%; height: 60px; font-size: 12px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="drag-overlay" class="drag-overlay">
+        <div class="overlay-content">
+            <p>Drop Config to Import</p>
+        </div>
+    </div>
+    <script src="../js/TurntableController.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
